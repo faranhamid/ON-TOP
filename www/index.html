@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>ON TOP - Elite Productivity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            height: 100vh;
+            position: fixed;
+            width: 100%;
+        }
+
+        /* App Container */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+        }
+
+        /* Header */
+        .app-header {
+            background: #000;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 60px 20px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .app-logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text {
+            font-size: 44px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            color: #fff;
+            line-height: 0.8;
+            text-align: center;
+        }
+
+        .logo-line {
+            width: 120px;
+            height: 4px;
+            background: #fff;
+            margin: 4px 0;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            background: #000;
+            position: relative;
+        }
+
+        .section {
+            display: none;
+            padding: 0;
+            min-height: calc(100vh - 160px);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .section-content {
+            padding: 30px 20px 100px;
+        }
+
+        /* Section Headers */
+        .section-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .section-subtitle {
+            color: #666;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Cards */
+        .card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            letter-spacing: -0.3px;
+        }
+
+        /* Input Styles */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 16px 20px;
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.2px;
+        }
+
+        .input-field:hover {
+            border-color: #666;
+            background: #0a0a0a;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #fff;
+            background: #000;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+            transform: translateY(-1px);
+        }
+
+        .input-field::placeholder {
+            color: #666;
+            font-weight: 400;
+        }
+
+        /* Premium Buttons */
+        .btn {
+            padding: 16px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            font-size: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #000;
+            border: 2px solid #fff;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+        }
+
+        .btn-primary:hover {
+            background: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,255,255,0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0px);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #fff;
+            border: 2px solid #333;
+            position: relative;
+        }
+
+        .btn-secondary:hover {
+            border-color: #fff;
+            background: rgba(255,255,255,0.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255,255,255,0.1);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0px);
+        }
+
+        /* Button animation effect */
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Calendar Styles */
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .calendar-nav {
+            background: transparent;
+            border: 1.5px solid #333;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .calendar-nav:hover {
+            border-color: #fff;
+        }
+
+        .calendar-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* Chat Styles */
+        .chat-container {
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #1a1a1a;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #0a0a0a;
+            padding: 20px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .chat-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .chat-subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #000;
+        }
+
+        .message {
+            margin-bottom: 16px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .message.user .message-bubble {
+            background: #fff;
+            color: #000;
+            margin-left: auto;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message.emma .message-bubble {
+            background: #1a1a1a;
+            color: #fff;
+            border-bottom-left-radius: 6px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: #0a0a0a;
+            border-top: 1px solid #1a1a1a;
+        }
+
+        .chat-input {
+            width: 100%;
+            padding: 14px 18px;
+            background: #000;
+            border: 1.5px solid #333;
+            border-radius: 25px;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #fff;
+        }
+
+        /* Stock/Crypto List */
+        .market-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .market-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            border-bottom: 1px solid #1a1a1a;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .market-item:hover {
+            background: #0a0a0a;
+        }
+
+        .market-symbol {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .market-name {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .market-price {
+            text-align: right;
+        }
+
+        .price-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .price-change {
+            font-size: 12px;
+            margin-top: 2px;
+        }
+
+        .price-change.positive {
+            color: #4ade80;
+        }
+
+        .price-change.negative {
+            color: #f87171;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            background: #000;
+            border-top: 1px solid #1a1a1a;
+            display: flex;
+            padding: 8px 0;
+            position: sticky;
+            bottom: 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #fff;
+        }
+
+        .nav-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Loading States */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 390px) {
+            .section-content {
+                padding: 20px 16px 80px;
+            }
+            
+            .stats-grid {
+                gap: 12px;
+            }
+        }
+
+
+
+        /* Nutrition Progress Bars */
+        .nutrition-progress-container {
+            margin-bottom: 20px;
+        }
+
+        .nutrition-item {
+            margin-bottom: 20px;
+        }
+
+        .nutrition-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .nutrition-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .nutrition-numbers {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #fff;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .remaining-text {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+        }
+
+        /* Workout & Meal Customization */
+        .workout-customization,
+        .meal-customization {
+            margin-bottom: 20px;
+        }
+
+        .meal-stats {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        .meal-stats .stat-number {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .meal-stats .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .workout-log-item {
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .workout-date {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .workout-summary {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        /* Financial Dashboard Styles */
+        .financial-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .financial-metric {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .financial-metric.highlight {
+            border-color: #fff;
+            background: #0a0a0a;
+        }
+
+        .metric-icon {
+            font-size: 20px;
+            color: #fff;
+            margin-right: 16px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .metric-content {
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Expense Categories */
+        .expense-overview {
+            margin-bottom: 20px;
+        }
+
+        .expense-chart-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .expense-category {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        .category-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .category-dot.fixed {
+            background: #fff;
+        }
+
+        .category-dot.variable {
+            background: transparent;
+        }
+
+        .category-dot.savings {
+            background: #333;
+            border-color: #333;
+        }
+
+        .category-name {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .category-amount {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Bills Tracker */
+        .bills-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #1a1a1a;
+            border-radius: 12px;
+        }
+
+        .bills-total {
+            text-align: left;
+        }
+
+        .bills-amount {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .bills-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .bills-status {
+            display: flex;
+            gap: 20px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-count {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .status-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .bills-container,
+        .goals-container {
+            min-height: 120px;
+            margin-bottom: 16px;
+        }
+
+        /* Investment Goals */
+        .goals-overview {
+            margin-bottom: 20px;
+        }
+
+        .goals-summary {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .goal-metric {
+            flex: 1;
+            text-align: center;
+            padding: 16px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        .goal-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .goal-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        /* Budget Planning */
+        .budget-overview {
+            margin-bottom: 20px;
+        }
+
+        .budget-rule {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .rule-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .rule-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .rule-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .rule-percent {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            width: 40px;
+        }
+
+        .rule-desc {
+            flex: 1;
+            margin-left: 12px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .rule-amount {
+            color: #666;
+            font-weight: 600;
+        }
+
+        /* Financial Insights */
+        .insights-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+        }
+
+        .insight-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .insight-content {
+            flex: 1;
+        }
+
+        .insight-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .insight-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        /* Empty States */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .empty-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .empty-subtext {
+            font-size: 12px;
+            color: #555;
+        }
+
+        /* Emma Profile & Chat Styles */
+        .emma-profile {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .emma-avatar {
+            position: relative;
+        }
+
+        .avatar-circle {
+            width: 60px;
+            height: 60px;
+            background: #fff;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid #0a0a0a;
+        }
+
+        .status-indicator.online {
+            background: #4ade80;
+        }
+
+        .emma-info {
+            flex: 1;
+        }
+
+        .emma-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .emma-status {
+            font-size: 14px;
+            color: #4ade80;
+            margin-bottom: 8px;
+        }
+
+        .emma-description {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .emma-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        /* Enhanced Chat Interface */
+        .chat-user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .chat-avatar {
+            width: 36px;
+            height: 36px;
+            background: #fff;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .chat-user-details {
+            flex: 1;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-action-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #666;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .chat-action-btn:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #555;
+            margin-top: 4px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            background: #fff;
+            color: #000;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .send-btn:hover {
+            background: #f5f5f5;
+        }
+
+        .chat-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .suggestion-btn {
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #333;
+            border-radius: 16px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-btn:hover {
+            border-color: #fff;
+            color: #fff;
+        }
+
+        /* Topics Grid */
+        .topics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .topic-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .topic-btn:hover {
+            border-color: #fff;
+            background: #333;
+        }
+
+        .topic-icon {
+            font-size: 24px;
+        }
+
+        .topic-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            text-align: center;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 2px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 1px;
+        }
+
+        /* Additional Professional Touches */
+        .card:hover {
+            border-color: #333;
+            transition: border-color 0.3s ease;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Task Overview Styles */
+        .task-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        /* Premium Select Styling */
+        select.input-field {
+            appearance: none;
+            background: #000;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 18px;
+            padding-right: 50px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        select.input-field:hover {
+            border-color: #fff;
+            background-color: #111;
+        }
+
+        select.input-field:focus {
+            border-color: #fff;
+            background-color: #000;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+        }
+
+        /* Enhanced select options - this will be styled by the browser but we ensure consistency */
+        select.input-field option {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 12px 16px;
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        select.input-field option:hover {
+            background: #333;
+        }
+
+        select.input-field option:checked {
+            background: #fff;
+            color: #000;
+            font-weight: 600;
+        }
+
+        /* Enhanced Mobile Experience */
+        @media (max-width: 390px) {            
+            .financial-metric {
+                padding: 12px;
+            }
+            
+            .section-content {
+                padding: 20px 16px 80px;
+            }
+            
+            .btn {
+                padding: 14px 24px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="app-header">
+            <div class="app-logo-container">
+                <div class="logo-text">ON</div>
+                <div class="logo-line"></div>
+                <div class="logo-text">TOP</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- PLANNER Section -->
+            <div class="section active" id="planner-section">
+                <div class="section-content">
+
+                    <div class="card">
+                        <div class="calendar-header">
+                            <button class="calendar-nav" onclick="previousPeriod()">‹</button>
+                            <div class="calendar-title" id="calendar-title">December 2024</div>
+                            <button class="calendar-nav" onclick="nextPeriod()">›</button>
+                        </div>
+                        
+                        <div class="calendar-view-switcher" style="display: flex; gap: 8px; margin-bottom: 24px; justify-content: center;">
+                            <button class="btn btn-secondary calendar-view-btn active" data-view="day">Day</button>
+                            <button class="btn btn-secondary calendar-view-btn" data-view="week">Week</button>
+                            <button class="btn btn-secondary calendar-view-btn" data-view="month">Month</button>
+                            <button class="btn btn-secondary calendar-view-btn" data-view="year">Year</button>
+                        </div>
+
+                        <div id="calendar-container">
+                            <!-- Calendar content will be dynamically generated -->
+                        </div>
+                    </div>
+
+                    <!-- Professional Task Summary -->
+                    <div class="card">
+                        <div class="card-title">Task Overview</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="tasks-today">0</div>
+                                <div class="stat-label">Today</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="tasks-week">0</div>
+                                <div class="stat-label">This Week</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- FITNESS Section -->
+            <div class="section" id="fitness-section">
+                <div class="section-content">
+
+                    <!-- Weight Management -->
+                    <div class="card">
+                        <div class="card-title">Weight Tracking</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="current-weight">170</div>
+                                <div class="stat-label">Current (lbs)</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="target-weight">160</div>
+                                <div class="stat-label">Target (lbs)</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="updateWeight()" style="width: 100%; margin-top: 16px;">Update Weight</button>
+                    </div>
+
+                    <!-- Professional Nutrition Dashboard -->
+                    <div class="card">
+                        <div class="card-title">Nutrition Dashboard</div>
+                        <div class="nutrition-progress-container">
+                            <div class="nutrition-item">
+                                <div class="nutrition-header">
+                                    <span class="nutrition-label">Calories</span>
+                                    <span class="nutrition-numbers">
+                                        <span id="calories-consumed">0</span> / <span id="calories-target">2000</span>
+                                    </span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="calories-progress"></div>
+                                </div>
+                                <div class="remaining-text" id="calories-remaining">2000 remaining</div>
+                            </div>
+                            
+                            <div class="nutrition-item">
+                                <div class="nutrition-header">
+                                    <span class="nutrition-label">Protein</span>
+                                    <span class="nutrition-numbers">
+                                        <span id="protein-consumed">0</span>g / <span id="protein-target">150</span>g
+                                    </span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="protein-progress"></div>
+                                </div>
+                                <div class="remaining-text" id="protein-remaining">150g remaining</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="logNutrition()" style="width: 100%; margin-top: 16px;">Log Food Intake</button>
+                    </div>
+
+                    <!-- Elite AI Trainer -->
+                    <div class="card">
+                        <div class="card-title">Elite AI Trainer</div>
+                        <div class="workout-customization">
+                            <div class="input-group">
+                                <label class="input-label">Workout Focus</label>
+                                <select id="workout-type" class="input-field">
+                                    <option value="strength">Strength Training</option>
+                                    <option value="cardio">Cardiovascular</option>
+                                    <option value="hiit">HIIT Training</option>
+                                    <option value="bodyweight">Bodyweight</option>
+                                    <option value="powerlifting">Powerlifting</option>
+                                    <option value="endurance">Endurance</option>
+                                    <option value="flexibility">Flexibility & Mobility</option>
+                                    <option value="sports">Sport-Specific</option>
+                                    <option value="crossfit">CrossFit</option>
+                                    <option value="yoga">Yoga & Pilates</option>
+                                    <option value="martial-arts">Martial Arts</option>
+                                    <option value="dance">Dance Fitness</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Intensity Level</label>
+                                <select id="workout-intensity" class="input-field">
+                                    <option value="easy">Easy - Light Recovery</option>
+                                    <option value="medium">Medium - Moderate Challenge</option>
+                                    <option value="hard">Hard - Maximum Intensity</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="generateCustomWorkout()" style="flex: 1;">Generate Workout</button>
+                            <button class="btn btn-secondary" onclick="switchWorkout()" style="flex: 1;">Switch Workout</button>
+                        </div>
+                    </div>
+
+                    <!-- Elite Meal Generator -->
+                    <div class="card">
+                        <div class="card-title">Elite Meal Generator</div>
+                        <div class="meal-stats">
+                            <div class="stat-item">
+                                <div class="stat-number">100,000+</div>
+                                <div class="stat-label">Meal Options</div>
+                            </div>
+                        </div>
+                        <div class="meal-customization">
+                            <div class="input-group">
+                                <label class="input-label">Target Calories</label>
+                                <input type="number" id="meal-calories" class="input-field" placeholder="e.g., 500" min="100" max="2000">
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Primary Protein Source</label>
+                                <select id="meal-protein" class="input-field">
+                                    <option value="chicken">Chicken Breast</option>
+                                    <option value="salmon">Wild Salmon</option>
+                                    <option value="beef">Lean Beef</option>
+                                    <option value="turkey">Turkey</option>
+                                    <option value="eggs">Organic Eggs</option>
+                                    <option value="tofu">Organic Tofu</option>
+                                    <option value="fish">White Fish</option>
+                                    <option value="pork">Lean Pork</option>
+                                    <option value="shrimp">Shrimp</option>
+                                    <option value="legumes">Legumes & Beans</option>
+                                    <option value="lamb">Grass-Fed Lamb</option>
+                                    <option value="duck">Duck Breast</option>
+                                    <option value="venison">Venison</option>
+                                    <option value="cod">Atlantic Cod</option>
+                                    <option value="tuna">Yellowfin Tuna</option>
+                                    <option value="halibut">Pacific Halibut</option>
+                                    <option value="tempeh">Fermented Tempeh</option>
+                                    <option value="seitan">Wheat Seitan</option>
+                                    <option value="quinoa">Quinoa Protein</option>
+                                    <option value="hemp">Hemp Seeds</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">Dietary Preferences</label>
+                                <select id="meal-diet" class="input-field">
+                                    <option value="balanced">Balanced Macros</option>
+                                    <option value="keto">Ketogenic</option>
+                                    <option value="paleo">Paleo</option>
+                                    <option value="vegan">Plant-Based</option>
+                                    <option value="lowcarb">Low Carb</option>
+                                    <option value="highprotein">High Protein</option>
+                                    <option value="glutenfree">Gluten-Free</option>
+                                    <option value="dairyfree">Dairy-Free</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="generateEliteMeal()" style="flex: 1;">Generate Meal</button>
+                            <button class="btn btn-secondary" onclick="switchMeal()" style="flex: 1;">Switch Meal</button>
+                        </div>
+                    </div>
+
+                    <!-- Workout History -->
+                    <div class="card">
+                        <div class="card-title">Training Log</div>
+                        <div id="workout-history">
+                            <div class="workout-log-item">
+                                <div class="workout-date">Today</div>
+                                <div class="workout-summary">No workouts logged yet</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="viewWorkoutHistory()" style="width: 100%;">View Full History</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FINANCES Section -->
+            <div class="section" id="finances-section">
+                <div class="section-content">
+
+                    <!-- Financial Overview Dashboard -->
+                    <div class="card">
+                        <div class="card-title">Financial Overview</div>
+                        <div class="financial-summary">
+                            <div class="financial-metric">
+                                <div class="metric-icon">▲</div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="total-income">$0</div>
+                                    <div class="metric-label">Monthly Income</div>
+                                </div>
+                            </div>
+                            <div class="financial-metric">
+                                <div class="metric-icon">▼</div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="total-expenses">$0</div>
+                                    <div class="metric-label">Monthly Expenses</div>
+                                </div>
+                            </div>
+                            <div class="financial-metric highlight">
+                                <div class="metric-icon">◆</div>
+                                <div class="metric-content">
+                                    <div class="metric-value" id="net-worth">$0</div>
+                                    <div class="metric-label">Net Cash Flow</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="updateIncome()" style="width: 100%; margin-top: 16px;">Update Income</button>
+                    </div>
+
+                    <!-- Monthly Bills Tracker -->
+                    <div class="card">
+                        <div class="card-title">Bill Tracker</div>
+                        <div class="bills-summary">
+                            <div class="bills-total">
+                                <div class="bills-amount" id="total-bills">$0</div>
+                                <div class="bills-label">Total Monthly Bills</div>
+                            </div>
+                            <div class="bills-status">
+                                <div class="status-item">
+                                    <div class="status-count" id="bills-paid">0</div>
+                                    <div class="status-label">Paid</div>
+                                </div>
+                                <div class="status-item">
+                                    <div class="status-count" id="bills-pending">0</div>
+                                    <div class="status-label">Pending</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="bills-list" class="bills-container">
+                            <div class="empty-state">
+                                <div class="empty-icon">□</div>
+                                <div class="empty-text">No bills added yet</div>
+                                <div class="empty-subtext">Add your monthly bills to track expenses</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="addBill()" style="width: 100%;">Add New Bill</button>
+                    </div>
+
+                    <!-- Investment Goals & Savings -->
+                    <div class="card">
+                        <div class="card-title">Investment Goals</div>
+                        <div class="goals-overview">
+                            <div class="goals-summary">
+                                <div class="goal-metric">
+                                    <div class="goal-value" id="total-saved">$0</div>
+                                    <div class="goal-label">Total Saved</div>
+                                </div>
+                                <div class="goal-metric">
+                                    <div class="goal-value" id="total-goals">$0</div>
+                                    <div class="goal-label">Target Amount</div>
+                                </div>
+                                <div class="goal-metric">
+                                    <div class="goal-value" id="savings-rate">0%</div>
+                                    <div class="goal-label">Progress Rate</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="goals-list" class="goals-container">
+                            <div class="empty-state">
+                                <div class="empty-icon">◇</div>
+                                <div class="empty-text">No investment goals set</div>
+                                <div class="empty-subtext">Create goals to track your wealth building</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 16px;">
+                            <button class="btn btn-primary" onclick="addFinancialGoal()" style="flex: 1;">Add Goal</button>
+                            <button class="btn btn-secondary" onclick="viewGoalAnalytics()" style="flex: 1;">Analytics</button>
+                        </div>
+                    </div>
+
+                    <!-- Budget Planning -->
+                    <div class="card">
+                        <div class="card-title">Budget Planner</div>
+                        <div class="budget-overview">
+                            <div class="budget-rule">
+                                <div class="rule-title">50/30/20 Rule</div>
+                                <div class="rule-breakdown">
+                                    <div class="rule-item">
+                                        <div class="rule-percent">50%</div>
+                                        <div class="rule-desc">Needs & Fixed Costs</div>
+                                        <div class="rule-amount" id="needs-budget">$0</div>
+                                    </div>
+                                    <div class="rule-item">
+                                        <div class="rule-percent">30%</div>
+                                        <div class="rule-desc">Wants & Lifestyle</div>
+                                        <div class="rule-amount" id="wants-budget">$0</div>
+                                    </div>
+                                    <div class="rule-item">
+                                        <div class="rule-percent">20%</div>
+                                        <div class="rule-desc">Savings & Investment</div>
+                                        <div class="rule-amount" id="savings-budget">$0</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="createBudgetPlan()" style="width: 100%;">Create Budget Plan</button>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <!-- LIFE COACH Section -->
+            <div class="section" id="lifecoach-section">
+                <div class="section-content">
+
+                    <!-- Emma Chat Interface -->
+                    <div class="chat-container">
+                        <div class="chat-header">
+                            <div class="chat-user-info">
+                                <div class="chat-avatar">E</div>
+                                <div class="chat-user-details">
+                                    <div class="chat-title">Emma</div>
+                                    <div class="chat-subtitle">Life Coach</div>
+                                </div>
+                            </div>
+                            <div class="chat-actions">
+                                <button class="chat-action-btn" onclick="clearChat()" title="Clear Chat">⌫</button>
+                                <button class="chat-action-btn" onclick="exportChat()" title="Export Chat">↗</button>
+                            </div>
+                        </div>
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="message emma">
+                                <div class="message-bubble">
+                                    Hi! I'm Emma, your life coach. I'm here to support you through whatever you're experiencing. What's on your mind today?
+                                </div>
+                                <div class="message-time">Just now</div>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <div class="input-wrapper">
+                                <input type="text" class="chat-input" id="chat-input" placeholder="Type your message..." onkeypress="handleChatKeyPress(event)">
+                                <button class="send-btn" onclick="sendChatMessage()" title="Send">→</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- SETTINGS Section -->
+            <div class="section" id="settings-section">
+                <div class="section-content">
+
+                    <div class="card">
+                        <div class="card-title">Account</div>
+                        
+                        <!-- Account Status (Updated Dynamically) -->
+                        <div id="account-status" class="market-item">
+                            <div>
+                                <div class="market-symbol" id="account-status-title">Not Signed In</div>
+                                <div class="market-name" id="account-status-subtitle">Sign in to sync your data</div>
+                            </div>
+                            <div style="color: #666;" id="account-status-icon">⚠</div>
+                        </div>
+                        
+                        <!-- Authentication Actions (Updated Dynamically) -->
+                        <div id="auth-actions">
+                            <div class="market-item" onclick="showAuthModal()">
+                                <div>
+                                    <div class="market-symbol">Sign In / Sign Up</div>
+                                    <div class="market-name">Access all features & sync data</div>
+                                </div>
+                                <div style="color: #666;">&gt;</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Profile Settings (Shows when logged in) -->
+                        <div id="profile-settings" class="market-item" onclick="editProfile()" style="display: none;">
+                            <div>
+                                <div class="market-symbol">Profile Settings</div>
+                                <div class="market-name">Update personal information</div>
+                            </div>
+                            <div style="color: #666;">&gt;</div>
+                        </div>
+                    </div>
+
+                    <!-- Data Management (Shows when logged in) -->
+                    <div class="card" id="data-management" style="display: none;">
+                        <div class="card-title">Data Management</div>
+                        <div class="market-item" onclick="exportUserData()">
+                            <div>
+                                <div class="market-symbol">Export Data</div>
+                                <div class="market-name">Download all your data</div>
+                            </div>
+                            <div style="color: #666;">⬇</div>
+                        </div>
+                        <div class="market-item" onclick="syncData()">
+                            <div>
+                                <div class="market-symbol">Sync Now</div>
+                                <div class="market-name">Force sync with cloud</div>
+                            </div>
+                            <div style="color: #666;">🔄</div>
+                        </div>
+                        <div class="market-item" onclick="showLogoutConfirm()" style="color: #ff4444;">
+                            <div>
+                                <div class="market-symbol">Sign Out</div>
+                                <div class="market-name">Sign out of your account</div>
+                            </div>
+                            <div style="color: #ff4444;">⚠</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Preferences</div>
+                        <div class="market-item" onclick="notificationSettings()">
+                            <div>
+                                <div class="market-symbol">Notifications</div>
+                                <div class="market-name">Manage alerts and reminders</div>
+                            </div>
+                            <div style="color: #666;">&gt;</div>
+                        </div>
+                        <div class="market-item" onclick="privacySettings()">
+                            <div>
+                                <div class="market-symbol">Privacy & Security</div>
+                                <div class="market-name">Control your data</div>
+                            </div>
+                            <div style="color: #666;">&gt;</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Support</div>
+                        <div class="market-item" onclick="helpCenter()">
+                            <div>
+                                <div class="market-symbol">Help Center</div>
+                                <div class="market-name">Get assistance</div>
+                            </div>
+                            <div style="color: #666;">&gt;</div>
+                        </div>
+                        <div class="market-item" onclick="contactSupport()">
+                            <div>
+                                <div class="market-symbol">Contact Support</div>
+                                <div class="market-name">Reach our team</div>
+                            </div>
+                            <div style="color: #666;">&gt;</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <a href="#" class="nav-item active" data-section="planner">
+                <div class="nav-icon">□</div>
+                <div class="nav-label">Planner</div>
+            </a>
+            <a href="#" class="nav-item" data-section="fitness">
+                <div class="nav-icon">◊</div>
+                <div class="nav-label">Fitness</div>
+            </a>
+            <a href="#" class="nav-item" data-section="finances">
+                <div class="nav-icon">▲</div>
+                <div class="nav-label">Finances</div>
+            </a>
+            <a href="#" class="nav-item" data-section="lifecoach">
+                <div class="nav-icon">○</div>
+                <div class="nav-label">Coach</div>
+            </a>
+
+            <a href="#" class="nav-item" data-section="settings">
+                <div class="nav-icon">⚬</div>
+                <div class="nav-label">Settings</div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Authentication & Data Sync -->
+    <script src="auth-manager.js"></script>
+    <script src="auth-ui.js"></script>
+    
+    <!-- Modals will be added dynamically -->
+    <script src="app.js"></script>
+</body>
+</html> 

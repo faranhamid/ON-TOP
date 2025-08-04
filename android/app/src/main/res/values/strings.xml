@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ON TOP</string>
+    <string name="title_activity_main">ON TOP</string>
+    <string name="package_name">com.ontop.app</string>
+    <string name="custom_url_scheme">com.ontop.app</string>
+</resources>
