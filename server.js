@@ -16,13 +16,34 @@ const port = process.env.PORT || 3001;
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 // Security Middleware
 app.use(helmet());
+
+// Flexible CORS to support browser dev, Capacitor (iOS/Android) and production
+const devAllowedOrigins = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost',
+    'http://127.0.0.1',
+    'capacitor://localhost',
+    'ionic://localhost'
+];
+
+const prodAllowedOrigins = ['https://your-domain.com'];
+
+const corsWhitelist = process.env.NODE_ENV === 'production' ? prodAllowedOrigins : devAllowedOrigins;
+
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-domain.com'] 
-        : ['http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost:5500', 'http://127.0.0.1:5500'],
+    origin: (origin, callback) => {
+        // Allow non-browser requests (e.g., curl, mobile webviews that omit origin)
+        if (!origin) return callback(null, true);
+        if (corsWhitelist.includes(origin)) return callback(null, true);
+        return callback(new Error(`Not allowed by CORS: ${origin}`));
+    },
     credentials: true
 }));
 
@@ -44,7 +65,8 @@ const authLimiter = rateLimit({
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('.')); // Serve your frontend files
+// Serve production web assets if hosting from Node (optional)
+app.use(express.static('www'));
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -276,7 +298,7 @@ Message: "${message}"
 Respond as the real Emma would - someone who genuinely cares, remembers what you've talked about, and helps you explore your thoughts and feelings in a natural, human way. Don't sound like a therapist manual - sound like a wise, caring person who happens to be professionally trained.`;
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: OPENAI_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: message }

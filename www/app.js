@@ -25,6 +25,16 @@ const APP_CONFIG = {
     }
 };
 
+const API_BASE_URL = (() => {
+    try {
+        const fromGlobal = window.__ONTOP_API_BASE__;
+        if (fromGlobal && typeof fromGlobal === 'string') return fromGlobal.replace(/\/$/, '');
+    } catch (_) { /* noop */ }
+    const isLocalhost = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    if (isLocalhost) return 'http://localhost:3001';
+    return 'https://ontop-api.yourdomain.com';
+})();
+
 // ===========================
 // ADVANCED STATE MANAGEMENT
 // ===========================
@@ -1338,7 +1348,7 @@ async function generateEmmaResponse(userMessage) {
     
     try {
         // Make API call to backend Emma service
-        const response = await fetch('http://localhost:3001/api/emma-chat', {
+        const response = await fetch(`${API_BASE_URL}/api/emma-chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

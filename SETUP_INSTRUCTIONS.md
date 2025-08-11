@@ -18,6 +18,7 @@ Create a file called `.env` in this directory with:
 OPENAI_API_KEY=sk-your-actual-openai-api-key-here
 PORT=3001
 NODE_ENV=development
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 ### 4. **Start Both Servers**
@@ -54,6 +55,7 @@ python3 -m http.server 8000
 **Emma gives fallback responses?**
 - Check backend is running on http://localhost:3001
 - Verify your OpenAI API key is correct
+- If running the native app, ensure your frontend is using an HTTPS production API base URL (do not use localhost in release).
 
 **Backend not starting?**
 - Run `npm install` first
