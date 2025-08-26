@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="">
+    <title>Quick Test</title>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #333; }
+        .success { border-color: #4CAF50; color: #4CAF50; }
+        .error { border-color: #f44336; color: #f44336; }
+        button { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Quick JavaScript Test</h1>
+    <div id="results"></div>
+    
+    <h2>Manual Tests:</h2>
+    <button onclick="testFunction()">Test Function Call</button>
+    <button onclick="testLocalStorage()">Test localStorage</button>
+    <button onclick="window.location.href='/paywall.html'">Go to Paywall</button>
+    
+    <script>
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (isError ? 'error' : 'success');
+            div.innerHTML = (isError ? '❌ ' : '✅ ') + message;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        function testFunction() {
+            log('Function call works!');
+            alert('JavaScript is working!');
+        }
+        
+        function testLocalStorage() {
+            try {
+                localStorage.setItem('test', 'working');
+                const value = localStorage.getItem('test');
+                localStorage.removeItem('test');
+                log('localStorage works: ' + value);
+            } catch (e) {
+                log('localStorage error: ' + e.message, true);
+            }
+        }
+        
+        // Auto-run tests
+        try {
+            log('JavaScript loaded successfully');
+            log('Document ready');
+            log('Console available: ' + (typeof console !== 'undefined'));
+            log('Current URL: ' + window.location.href);
+            
+            // Test basic functions
+            testLocalStorage();
+            
+        } catch (error) {
+            log('Error during auto-tests: ' + error.message, true);
+        }
+    </script>
+</body>
+</html>

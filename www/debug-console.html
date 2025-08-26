@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ON TOP - Console Debug</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .debug-section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #4CAF50; }
+        .warning { color: #FFA726; }
+        .info { color: #42A5F5; }
+        .test-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+        }
+        #console-output {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #111;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 ON TOP Console Debug Tool</h1>
+    
+    <div class="debug-section">
+        <h2>🚨 Real-Time Console Monitor</h2>
+        <p>This captures all console errors, warnings, and logs:</p>
+        <div id="console-output"></div>
+        <button class="test-button" onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>🧪 Function Tests</h2>
+        <button class="test-button" onclick="testTrackEvent()">Test trackEvent()</button>
+        <button class="test-button" onclick="testNavigation()">Test Navigation</button>
+        <button class="test-button" onclick="testLocalStorage()">Test localStorage</button>
+        <button class="test-button" onclick="testStripe()">Test Stripe Loading</button>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="debug-section">
+        <h2>🔗 Quick Navigation Tests</h2>
+        <button class="test-button" onclick="testLandingPage()">Test Landing Page</button>
+        <button class="test-button" onclick="testPaywallPage()">Test Paywall Page</button>
+        <button class="test-button" onclick="testMainApp()">Test Main App</button>
+    </div>
+
+    <div class="debug-section">
+        <h2>🧹 Cache & Reset Tools</h2>
+        <button class="test-button" onclick="hardRefresh()">Hard Refresh All</button>
+        <button class="test-button" onclick="clearAllCache()">Clear All Cache</button>
+        <button class="test-button" onclick="resetAllData()">Reset All Data</button>
+    </div>
+
+    <script>
+        // Console monitoring
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalInfo = console.info;
+        
+        const consoleOutput = document.getElementById('console-output');
+        
+        function addToConsole(type, args) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span style="color: #666">[${timestamp}]</span> <span class="${type}">[${type.toUpperCase()}]</span> ${Array.from(args).join(' ')}`;
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            addToConsole('info', args);
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            addToConsole('error', args);
+            originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            addToConsole('warning', args);
+            originalWarn.apply(console, args);
+        };
+        
+        console.info = function(...args) {
+            addToConsole('info', args);
+            originalInfo.apply(console, args);
+        };
+        
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+            console.log('Console cleared');
+        }
+        
+        // Test functions
+        function testTrackEvent() {
+            const results = document.getElementById('test-results');
+            try {
+                if (typeof trackEvent === 'function') {
+                    trackEvent('test_event', { source: 'debug_tool' });
+                    results.innerHTML = '<div class="success">✅ trackEvent() works correctly</div>';
+                } else {
+                    results.innerHTML = '<div class="error">❌ trackEvent() function not found</div>';
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ trackEvent() error: ${error.message}</div>`;
+            }
+        }
+        
+        function testNavigation() {
+            const results = document.getElementById('test-results');
+            const functions = ['nextScreen', 'prevScreen', 'skipToApp', 'selectPlan'];
+            let html = '<h4>Navigation Function Tests:</h4>';
+            
+            functions.forEach(func => {
+                if (typeof window[func] === 'function') {
+                    html += `<div class="success">✅ ${func}() exists</div>`;
+                } else {
+                    html += `<div class="error">❌ ${func}() missing</div>`;
+                }
+            });
+            
+            results.innerHTML = html;
+        }
+        
+        function testLocalStorage() {
+            const results = document.getElementById('test-results');
+            try {
+                localStorage.setItem('test_key', 'test_value');
+                const value = localStorage.getItem('test_key');
+                localStorage.removeItem('test_key');
+                
+                if (value === 'test_value') {
+                    results.innerHTML = '<div class="success">✅ localStorage working correctly</div>';
+                } else {
+                    results.innerHTML = '<div class="error">❌ localStorage not working</div>';
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="error">❌ localStorage error: ${error.message}</div>`;
+            }
+        }
+        
+        function testStripe() {
+            const results = document.getElementById('test-results');
+            if (typeof Stripe !== 'undefined') {
+                results.innerHTML = '<div class="success">✅ Stripe.js loaded successfully</div>';
+            } else {
+                results.innerHTML = '<div class="warning">⚠️ Stripe.js not loaded (normal for this page)</div>';
+            }
+        }
+        
+        function testLandingPage() {
+            window.open('/?debug=1', '_blank');
+        }
+        
+        function testPaywallPage() {
+            window.open('/paywall.html?debug=1', '_blank');
+        }
+        
+        function testMainApp() {
+            window.open('/app.html?debug=1', '_blank');
+        }
+        
+        function hardRefresh() {
+            console.log('Performing hard refresh...');
+            window.location.reload(true);
+        }
+        
+        function clearAllCache() {
+            console.log('Clearing all cache...');
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => {
+                        caches.delete(name);
+                    });
+                });
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            console.log('Cache cleared');
+        }
+        
+        function resetAllData() {
+            console.log('Resetting all data...');
+            localStorage.removeItem('ontop_user_email');
+            localStorage.removeItem('ontop_user_plan');
+            localStorage.removeItem('ontop_auth_token');
+            localStorage.removeItem('ontop_user');
+            console.log('All data reset');
+        }
+        
+        // Monitor for errors on page load
+        window.addEventListener('error', function(e) {
+            console.error('Global Error:', e.error?.message || e.message, 'at', e.filename + ':' + e.lineno);
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled Promise Rejection:', e.reason);
+        });
+        
+        // Initial status
+        console.log('🔧 Debug tool loaded successfully');
+        console.log('📍 Current URL:', window.location.href);
+        console.log('🌐 User Agent:', navigator.userAgent);
+        console.log('📱 Screen Size:', screen.width + 'x' + screen.height);
+        
+        // Test basic functionality
+        setTimeout(() => {
+            console.log('⏰ Running initial tests...');
+            testLocalStorage();
+            testNavigation();
+        }, 1000);
+    </script>
+</body>
+</html>

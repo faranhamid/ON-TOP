@@ -24,6 +24,9 @@ class ONTOPDatabase {
                 last_login DATETIME,
                 is_premium INTEGER DEFAULT 0,
                 subscription_expires DATETIME,
+                plan TEXT,
+                stripe_customer_id TEXT,
+                stripe_subscription_id TEXT,
                 total_sessions INTEGER DEFAULT 0,
                 preferences TEXT DEFAULT '{}',
                 privacy_settings TEXT DEFAULT '{}'
@@ -424,6 +427,74 @@ class ONTOPDatabase {
                         resolve({ message: 'All user data deleted successfully' });
                     }
                 });
+            });
+        });
+    }
+
+    // ================================
+    // PREMIUM & SUBSCRIPTION METHODS
+    // ================================
+
+    async updateUserPremiumStatus(userId, premiumData) {
+        return new Promise((resolve, reject) => {
+            this.db.run(`
+                UPDATE users 
+                SET is_premium = ?, subscription_expires = ?, plan = ?, 
+                    stripe_customer_id = ?, stripe_subscription_id = ?
+                WHERE id = ?
+            `, [
+                premiumData.isPremium ? 1 : 0,
+                premiumData.subscriptionExpires,
+                premiumData.plan,
+                premiumData.stripeCustomerId,
+                premiumData.stripeSubscriptionId,
+                userId
+            ], function(err) {
+                if (err) reject(err);
+                else resolve({ message: 'Premium status updated successfully' });
+            });
+        });
+    }
+
+    async getUserById(userId) {
+        return new Promise((resolve, reject) => {
+            this.db.get(`
+                SELECT * FROM users WHERE id = ?
+            `, [userId], (err, user) => {
+                if (err) reject(err);
+                else resolve(user);
+            });
+        });
+    }
+
+    async getUserByStripeSubscription(subscriptionId) {
+        return new Promise((resolve, reject) => {
+            this.db.get(`
+                SELECT * FROM users WHERE stripe_subscription_id = ?
+            `, [subscriptionId], (err, user) => {
+                if (err) reject(err);
+                else resolve(user);
+            });
+        });
+    }
+
+    async checkUserPremiumStatus(userId) {
+        return new Promise((resolve, reject) => {
+            this.db.get(`
+                SELECT is_premium, subscription_expires, plan FROM users WHERE id = ?
+            `, [userId], (err, user) => {
+                if (err) reject(err);
+                else if (!user) reject(new Error('User not found'));
+                else {
+                    const now = new Date();
+                    const isExpired = user.subscription_expires && new Date(user.subscription_expires) < now;
+                    resolve({
+                        isPremium: user.is_premium === 1 && !isExpired,
+                        plan: user.plan,
+                        subscriptionExpires: user.subscription_expires,
+                        isExpired: isExpired
+                    });
+                }
             });
         });
     }

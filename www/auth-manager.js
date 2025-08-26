@@ -3,7 +3,7 @@ class ONTOPAuthManager {
     constructor() {
         this.token = localStorage.getItem('ontop_auth_token');
         this.user = JSON.parse(localStorage.getItem('ontop_user') || 'null');
-        this.baseURL = 'http://localhost:3001';
+        this.baseURL = 'http://localhost:3002';
         this.syncQueue = [];
         this.isOnline = navigator.onLine;
         

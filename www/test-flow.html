@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ON TOP - Flow Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .test-button:hover {
+            background: #f0f0f0;
+        }
+        .status {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .success { border-left: 4px solid #4CAF50; }
+        .error { border-left: 4px solid #f44336; }
+    </style>
+</head>
+<body>
+    <h1>🚀 ON TOP Flow Test</h1>
+    <p>Use this page to test the complete user flow:</p>
+
+    <div class="status">
+        <h3>📍 Current Status:</h3>
+        <p id="current-status">Loading...</p>
+    </div>
+
+    <div class="status">
+        <h3>🔗 Test Links:</h3>
+        <a href="/" class="test-button">1. Landing Page</a>
+        <a href="/paywall.html" class="test-button">2. Paywall Direct</a>
+        <a href="/app.html" class="test-button">3. Main App</a>
+    </div>
+
+    <div class="status">
+        <h3>💾 Stored Data:</h3>
+        <div id="stored-data">Loading...</div>
+    </div>
+
+    <div class="status">
+        <h3>🧹 Reset Options:</h3>
+        <button class="test-button" onclick="clearAllData()">Clear All Data</button>
+        <button class="test-button" onclick="location.reload()">Refresh Page</button>
+    </div>
+
+    <script>
+        function updateStatus() {
+            // Check current page
+            const currentUrl = window.location.href;
+            document.getElementById('current-status').innerHTML = `
+                <strong>URL:</strong> ${currentUrl}<br>
+                <strong>Time:</strong> ${new Date().toLocaleTimeString()}
+            `;
+
+            // Check stored data
+            const email = localStorage.getItem('ontop_user_email');
+            const plan = localStorage.getItem('ontop_user_plan');
+            const token = localStorage.getItem('ontop_auth_token');
+            
+            document.getElementById('stored-data').innerHTML = `
+                <strong>Email:</strong> ${email || 'Not set'}<br>
+                <strong>Plan:</strong> ${plan || 'Not selected'}<br>
+                <strong>Auth Token:</strong> ${token ? 'Present' : 'Not set'}
+            `;
+        }
+
+        function clearAllData() {
+            localStorage.removeItem('ontop_user_email');
+            localStorage.removeItem('ontop_user_plan');
+            localStorage.removeItem('ontop_auth_token');
+            localStorage.removeItem('ontop_user');
+            alert('All data cleared! You can now test the flow from the beginning.');
+            updateStatus();
+        }
+
+        // Update status on load and every 5 seconds
+        updateStatus();
+        setInterval(updateStatus, 5000);
+
+        // Test the flow programmatically
+        function testCompleteFlow() {
+            console.log('🧪 Testing complete flow...');
+            
+            // Step 1: Clear data
+            clearAllData();
+            
+            // Step 2: Go to landing
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        }
+
+        // Add keyboard shortcut for quick testing
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 't' && e.metaKey) {
+                testCompleteFlow();
+            }
+        });
+    </script>
+
+    <div class="status">
+        <h3>🎯 Quick Test:</h3>
+        <button class="test-button" onclick="testCompleteFlow()">Start Complete Flow Test</button>
+        <p><small>Or press Cmd+T</small></p>
+    </div>
+
+    <div class="status">
+        <h3>📋 Expected Flow:</h3>
+        <ol>
+            <li>Landing page loads with "Get Started" button</li>
+            <li>Click "Get Started" → Redirects to paywall</li>
+            <li>Navigate through 4 paywall screens</li>
+            <li>Select a plan and click "Continue"</li>
+            <li>Email modal appears (if no email stored)</li>
+            <li>Enter email → Proceeds to profile setup (3 screens)</li>
+            <li>Complete setup → Redirects to main app</li>
+        </ol>
+    </div>
+</body>
+</html>

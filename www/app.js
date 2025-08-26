@@ -25,13 +25,19 @@ const APP_CONFIG = {
     }
 };
 
+// Resolve API base URL for development vs production builds
+// - On device / App Store builds we must use HTTPS
+// - In local dev we allow localhost
 const API_BASE_URL = (() => {
     try {
         const fromGlobal = window.__ONTOP_API_BASE__;
         if (fromGlobal && typeof fromGlobal === 'string') return fromGlobal.replace(/\/$/, '');
     } catch (_) { /* noop */ }
+
     const isLocalhost = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    if (isLocalhost) return 'http://localhost:3001';
+            if (isLocalhost) return 'http://localhost:3002';
+
+    // Default production API. Replace with your deployed HTTPS endpoint.
     return 'https://ontop-api.yourdomain.com';
 })();
 
@@ -510,6 +516,11 @@ function updateCalendarTitle() {
 
 // Task Management
 function addTask() {
+    // Check paywall before adding task
+    if (window.PaywallManager && !window.PaywallManager.beforeTaskAdd()) {
+        return; // Paywall blocked the action
+    }
+    
     showTaskModal();
 }
 
@@ -992,6 +1003,11 @@ function initializeFinances() {
 }
 
 function addBill() {
+    // Check paywall before adding bill
+    if (window.PaywallManager && !window.PaywallManager.beforeBillAdd()) {
+        return; // Paywall blocked the action
+    }
+    
     const modal = createModal('Add Bill', `
         <div class="input-group">
             <label class="input-label">Bill Name</label>
@@ -1082,6 +1098,11 @@ function deleteBill(billId) {
 }
 
 function addFinancialGoal() {
+    // Check paywall before adding goal
+    if (window.PaywallManager && !window.PaywallManager.beforeGoalAdd()) {
+        return; // Paywall blocked the action
+    }
+    
     const modal = createModal('Add Financial Goal', `
         <div class="input-group">
             <label class="input-label">Goal Name</label>
@@ -1215,11 +1236,16 @@ function handleChatKeyPress(event) {
     }
 }
 
-function sendChatMessage() {
+async function sendChatMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
     
     if (!message) return;
+    
+    // Check paywall before sending message
+    if (window.PaywallManager && !await window.PaywallManager.beforeEmmaChatSend(message)) {
+        return; // Paywall blocked the message
+    }
     
     // Add user message
     addChatMessage(message, 'user');
@@ -1252,8 +1278,8 @@ function addChatMessage(message, sender) {
     scrollChatToBottom();
     
     // Save to localStorage
-    AppState.chat.push({ message, sender, timestamp: new Date().toISOString() });
-    localStorage.setItem('ontop_chat', JSON.stringify(AppState.chat));
+    AppState.chat.messages.push({ message, sender, timestamp: new Date().toISOString() });
+    localStorage.setItem('ontop_chat_messages', JSON.stringify(AppState.chat.messages));
 }
 
 function showTypingIndicator() {
@@ -1355,7 +1381,8 @@ async function generateEmmaResponse(userMessage) {
             },
             body: JSON.stringify({
                 message: userMessage,
-                conversationContext: AppState.chat.conversationContext
+                conversationContext: AppState.chat.conversationContext,
+                recentChat: (Array.isArray(AppState.chat.messages) ? AppState.chat.messages.slice(-10) : [])
             })
         });
 
@@ -1401,6 +1428,86 @@ async function generateEmmaResponse(userMessage) {
         }
         
         return contextualFallbacks[Math.floor(Math.random() * contextualFallbacks.length)];
+    }
+}
+
+// ===========================
+// CORPORATE FINANCE ADVISOR CHAT
+// ===========================
+
+function handleFinanceChatKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendFinanceChatMessage();
+    }
+}
+
+function addFinanceChatMessage(message, sender) {
+    const messagesContainer = document.getElementById('finance-chat-messages');
+    if (!messagesContainer) return;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    messageDiv.innerHTML = `<div class="message-bubble">${message}</div>`;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function showFinanceTyping() {
+    const messagesContainer = document.getElementById('finance-chat-messages');
+    if (!messagesContainer) return;
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message emma finance-typing';
+    typingDiv.innerHTML = `<div class="message-bubble">Thinking…</div>`;
+    messagesContainer.appendChild(typingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function hideFinanceTyping() {
+    const typing = document.querySelector('.finance-typing');
+    if (typing) typing.remove();
+}
+
+async function sendFinanceChatMessage() {
+    const input = document.getElementById('finance-chat-input');
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message) return;
+
+    addFinanceChatMessage(message, 'user');
+    input.value = '';
+    showFinanceTyping();
+
+    try {
+        const userFinanceContext = {
+            monthlyIncome: Number(localStorage.getItem('ontop_income') || AppState.finances?.income || 0),
+            fixedBills: (AppState.finances?.bills || []).map(b => ({ name: b.name, amount: b.amount })),
+            expenses: (AppState.finances?.expenses || []).map(e => ({ name: e.name, amount: e.amount })),
+            savings: Number(localStorage.getItem('ontop_savings_balance') || 0),
+            goals: (AppState.finances?.goals || []).map(g => ({ title: g.title, target: g.target, current: g.current })),
+            riskTolerance: localStorage.getItem('ontop_risk') || 'balanced',
+            timeHorizonYears: Number(localStorage.getItem('ontop_horizon') || 5)
+        };
+
+        const response = await fetch(`${API_BASE_URL}/api/finance-advisor`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message,
+                userFinanceContext,
+                recentChat: (Array.isArray(AppState.chat?.messages) ? AppState.chat.messages.slice(-8) : [])
+            })
+        });
+        const data = await response.json();
+        hideFinanceTyping();
+        if (data.success) {
+            addFinanceChatMessage(data.response, 'emma');
+        } else {
+            addFinanceChatMessage('Unable to generate advice right now. Please try again.', 'emma');
+        }
+    } catch (err) {
+        console.error('Finance advisor error', err);
+        hideFinanceTyping();
+        addFinanceChatMessage('Temporary issue reaching the advisor. Please retry in a moment.', 'emma');
     }
 }
 
@@ -1678,7 +1785,7 @@ function loadChatHistory() {
     });
     
     // Load saved messages
-    AppState.chat.forEach(chat => {
+    AppState.chat.messages.forEach(chat => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${chat.sender}`;
         messageDiv.innerHTML = `<div class="message-bubble">${chat.message}</div>`;
@@ -2858,7 +2965,7 @@ function clearChat() {
             <div class="message emma">
                 <div class="message-bundle">
                     <div class="message-bubble">
-                        Hey there! I'm Emma 😊 I'm so glad you're here. I love getting to know people and having real conversations about life. What's going on in your world today?
+                        Hi! I'm Emma, your life coach. I'm here to support you through whatever you're experiencing. What's on your mind today?
                     </div>
                     <div class="message-time">Just now</div>
                 </div>

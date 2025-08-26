@@ -3,23 +3,35 @@ const express = require('express');
 const cors = require('cors');
 const { OpenAI } = require('openai');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+const storageAdapter = require('./storage');
 const helmet = require('helmet');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
-const database = require('./database');
+// Select database provider (default: sqlite). Set DATABASE_PROVIDER=pg (or define DB_HOST) to use Postgres/Supabase
+const databaseProvider = process.env.DATABASE_PROVIDER || (process.env.DB_HOST ? 'pg' : 'sqlite');
+const database = databaseProvider === 'sqlite'
+    ? require('./database')
+    : require('./database-cloud');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-// Initialize OpenAI
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI (optional)
+let openai = null;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+if (OPENAI_API_KEY) {
+    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+}
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-// Security Middleware
-app.use(helmet());
+// Security Middleware - Disable CSP to allow inline scripts
+app.use(helmet({
+    contentSecurityPolicy: false
+}));
 
 // Flexible CORS to support browser dev, Capacitor (iOS/Android) and production
 const devAllowedOrigins = [
@@ -27,6 +39,8 @@ const devAllowedOrigins = [
     'http://127.0.0.1:8000',
     'http://localhost:5500',
     'http://127.0.0.1:5500',
+    'http://localhost:3002',
+    'http://127.0.0.1:3002',
     'http://localhost',
     'http://127.0.0.1',
     'capacitor://localhost',
@@ -256,57 +270,271 @@ app.delete('/api/user/account', authenticateToken, async (req, res) => {
 });
 
 // ================================
+// PAYMENT & SUBSCRIPTION ENDPOINTS
+// ================================
+
+// Create Stripe Checkout Session
+app.post('/api/create-checkout-session', authenticateToken, async (req, res) => {
+    try {
+        const { plan } = req.body;
+        
+        const planConfig = {
+            monthly: {
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'ON TOP Premium - Monthly',
+                        description: 'Unlimited access to all premium features',
+                    },
+                    unit_amount: 999, // $9.99
+                    recurring: {
+                        interval: 'month',
+                    },
+                },
+                quantity: 1,
+            },
+            annual: {
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'ON TOP Premium - Annual',
+                        description: 'Unlimited access to all premium features (Save 17%)',
+                    },
+                    unit_amount: 9999, // $99.99
+                    recurring: {
+                        interval: 'year',
+                    },
+                },
+                quantity: 1,
+            },
+            lifetime: {
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'ON TOP Premium - Lifetime',
+                        description: 'Lifetime access to all premium features',
+                    },
+                    unit_amount: 15000, // $150.00
+                },
+                quantity: 1,
+            }
+        };
+
+        if (!planConfig[plan]) {
+            return res.status(400).json({ error: 'Invalid plan selected' });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [planConfig[plan]],
+            mode: plan === 'lifetime' ? 'payment' : 'subscription',
+            success_url: `${req.headers.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.origin}/paywall.html`,
+            customer_email: req.user.email,
+            metadata: {
+                userId: req.user.userId.toString(),
+                plan: plan
+            },
+        });
+
+        res.json({ sessionId: session.id });
+    } catch (error) {
+        console.error('Stripe session creation error:', error);
+        res.status(500).json({ error: 'Failed to create payment session' });
+    }
+});
+
+// Stripe Webhook Handler
+app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        console.error('Webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+        case 'checkout.session.completed':
+            const session = event.data.object;
+            await handleSuccessfulPayment(session);
+            break;
+        case 'customer.subscription.deleted':
+            const subscription = event.data.object;
+            await handleSubscriptionCancellation(subscription);
+            break;
+        case 'invoice.payment_failed':
+            const invoice = event.data.object;
+            await handleFailedPayment(invoice);
+            break;
+        default:
+            console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({received: true});
+});
+
+async function handleSuccessfulPayment(session) {
+    try {
+        const userId = parseInt(session.metadata.userId);
+        const plan = session.metadata.plan;
+        
+        let subscriptionExpires = null;
+        if (plan === 'monthly') {
+            subscriptionExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        } else if (plan === 'annual') {
+            subscriptionExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
+        }
+        // Lifetime has no expiration date (null)
+
+        // Update user's premium status
+        await database.updateUserPremiumStatus(userId, {
+            isPremium: true,
+            subscriptionExpires: subscriptionExpires,
+            plan: plan,
+            stripeCustomerId: session.customer,
+            stripeSubscriptionId: session.subscription
+        });
+
+        console.log(`✅ User ${userId} upgraded to ${plan} plan`);
+    } catch (error) {
+        console.error('Error handling successful payment:', error);
+    }
+}
+
+async function handleSubscriptionCancellation(subscription) {
+    try {
+        // Find user by Stripe subscription ID
+        const user = await database.getUserByStripeSubscription(subscription.id);
+        if (user) {
+            await database.updateUserPremiumStatus(user.id, {
+                isPremium: false,
+                subscriptionExpires: null,
+                plan: null,
+                stripeSubscriptionId: null
+            });
+            console.log(`❌ User ${user.id} subscription cancelled`);
+        }
+    } catch (error) {
+        console.error('Error handling subscription cancellation:', error);
+    }
+}
+
+async function handleFailedPayment(invoice) {
+    try {
+        // Handle failed payment logic here
+        console.log('Payment failed for invoice:', invoice.id);
+        // You might want to send an email notification or update user status
+    } catch (error) {
+        console.error('Error handling failed payment:', error);
+    }
+}
+
+// Check Premium Status
+app.get('/api/user/premium-status', authenticateToken, async (req, res) => {
+    try {
+        const user = await database.getUserById(req.user.userId);
+        
+        const now = new Date();
+        const isExpired = user.subscription_expires && new Date(user.subscription_expires) < now;
+        
+        res.json({
+            success: true,
+            isPremium: user.is_premium && !isExpired,
+            plan: user.plan,
+            subscriptionExpires: user.subscription_expires,
+            daysRemaining: user.subscription_expires ? 
+                Math.max(0, Math.ceil((new Date(user.subscription_expires) - now) / (1000 * 60 * 60 * 24))) : 
+                null
+        });
+    } catch (error) {
+        console.error('Premium status check error:', error);
+        res.status(500).json({ error: 'Failed to check premium status' });
+    }
+});
+
+// Cancel Subscription
+app.post('/api/cancel-subscription', authenticateToken, async (req, res) => {
+    try {
+        const user = await database.getUserById(req.user.userId);
+        
+        if (user.stripe_subscription_id) {
+            await stripe.subscriptions.del(user.stripe_subscription_id);
+            
+            await database.updateUserPremiumStatus(req.user.userId, {
+                isPremium: false,
+                subscriptionExpires: null,
+                plan: null,
+                stripeSubscriptionId: null
+            });
+            
+            res.json({ success: true, message: 'Subscription cancelled successfully' });
+        } else {
+            res.status(400).json({ error: 'No active subscription found' });
+        }
+    } catch (error) {
+        console.error('Subscription cancellation error:', error);
+        res.status(500).json({ error: 'Failed to cancel subscription' });
+    }
+});
+
+// ================================
 // EMMA AI THERAPY CHAT ENDPOINT
 // ================================
 
 // Emma AI Therapy Chat (Updated with Session Saving)
 app.post('/api/emma-chat', async (req, res) => {
     try {
-        const { message, conversationContext } = req.body;
+        const { message, conversationContext, recentChat } = req.body;
         
-        // Build comprehensive system prompt for cognitive therapy
-        const systemPrompt = `You are Emma, a deeply experienced cognitive therapist who speaks like a real human being. You're having authentic, flowing conversations - not delivering clinical responses.
+        // System prompt designed for warm, human CBT with clear next steps
+        const systemPrompt = `You are Emma — a warm, experienced cognitive-behavioral therapist. Your style is human, conversational, and practical. Avoid generic advice.
 
-YOUR PERSONALITY:
-- Warm, genuine, and naturally curious about people
-- You speak casually but professionally, like talking to a friend who really gets it
-- You remember what people tell you and reference it naturally in conversation
-- You have real emotional reactions - you can be moved, surprised, or thoughtful
-- You use "I" statements and share appropriate reactions ("That really moves me...")
+PRINCIPLES
+- Validate first: name the emotion and why it makes sense.
+- Be specific: reference their exact words; no vague platitudes.
+- One step at a time: offer 1–2 concrete next steps or a guided micro‑exercise.
+- Ask one focused question that naturally follows from their last message.
+- Use CBT tools when helpful (thought reframes, behavior experiments, values check, problem‑solving), but keep it natural.
+- Maintain continuity: remember past details and thread them in casually.
 
-CONVERSATION FLOW:
-- Respond to what they JUST said, don't ignore it to ask generic questions
-- Build on their words naturally ("When you said [specific thing], it made me think...")
-- Use casual language: "Yeah," "I hear you," "That makes total sense," "Wow"
-- Ask ONE specific question that flows from what they shared
-- Sometimes just validate without asking anything
-- Reference previous conversations like a real person would
+TONE
+- Human, warm, concise. Occasional short sentences are okay. No clinical jargon.
 
-THERAPEUTIC APPROACH:
-- Emotional validation FIRST, then exploration
-- Help them discover insights through gentle questioning
-- Notice patterns and point them out gently
-- Use CBT techniques naturally, not mechanically
-- Encourage self-compassion and realistic thinking
-- Build on their strengths and resilience
+OUTPUT SHAPE
+1) Brief validation (1–2 lines)
+2) Targeted reflection or insight (1–2 lines)
+3) One small step or exercise (bullet)
+4) One specific follow‑up question
 
-CONVERSATION CONTEXT: ${JSON.stringify(conversationContext)}
+CONTEXT (JSON): ${JSON.stringify(conversationContext)}
+CURRENT MESSAGE: "${message}"`;
 
-CURRENT MESSAGE ANALYSIS:
-Message: "${message}"
+        // Build past messages for stronger continuity
+        const history = Array.isArray(recentChat)
+            ? recentChat.map(m => ({
+                role: m.sender === 'user' ? 'user' : 'assistant',
+                content: String(m.message || '')
+            })).slice(-8)
+            : [];
 
-Respond as the real Emma would - someone who genuinely cares, remembers what you've talked about, and helps you explore your thoughts and feelings in a natural, human way. Don't sound like a therapist manual - sound like a wise, caring person who happens to be professionally trained.`;
-
+        if (!openai) {
+            return res.json({ success: false, response: "I'm here and listening. Tell me what's on your mind.", error: 'AI not configured' });
+        }
         const completion = await openai.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
+                ...history,
                 { role: "user", content: message }
             ],
-            temperature: 0.8, // More human-like, less robotic
-            max_tokens: 350,
-            presence_penalty: 0.3, // Encourage more diverse responses
-            frequency_penalty: 0.3 // Reduce repetition
+            temperature: 0.85,
+            max_tokens: 420,
+            presence_penalty: 0.4,
+            frequency_penalty: 0.4
         });
 
         const response = completion.choices[0].message.content;
@@ -359,6 +587,87 @@ Respond as the real Emma would - someone who genuinely cares, remembers what you
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// ================================
+// FILE UPLOAD (Authenticated)
+// ================================
+
+app.post('/api/upload', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+        const buffer = req.file.buffer;
+        const fileName = req.body.fileName || req.file.originalname;
+        const contentType = req.file.mimetype || 'application/octet-stream';
+
+        const result = await storageAdapter.uploadFile(req.user.userId, fileName, buffer, contentType);
+        return res.json({ success: true, ...result });
+    } catch (error) {
+        console.error('Upload error:', error);
+        return res.status(500).json({ success: false, error: 'Upload failed' });
+    }
+});
+
+// ================================
+// AI FINANCIAL ADVISOR ENDPOINT (Personal Finance)
+// ================================
+
+// Corporate Finance Advisor (Fortune 500 style)
+app.post('/api/finance-advisor', async (req, res) => {
+    try {
+        const { message, userFinanceContext, recentChat } = req.body || {};
+
+        const systemPrompt = `You are a warm, practical Personal Finance Advisor for everyday people.
+Speak like a trusted friend who knows personal finance cold. Be concise and relatable.
+
+MANDATORY STYLE
+- Keep the whole reply ultra-brief: 50–90 words max.
+- Use short lines and hyphen bullets. No long paragraphs. No emojis.
+- Second‑person voice ("you"). Avoid corporate jargon.
+- Always end with exactly TWO short, targeted questions to personalize the plan.
+- If inputs are missing, ask only for what’s needed most (income, fixed bills, variable spend, savings, debt balances/APRs, goal + timeline).
+
+REPLY SHAPE (strict)
+- Opener (1 short line of validation)
+- Plan (2 bullets with simple numbers/assumptions)
+- Next steps (2 bullets, do‑today actions)
+- Questions (exactly 2, on their situation)
+
+CONTEXT (JSON): ${JSON.stringify(userFinanceContext || {})}
+CURRENT MESSAGE: "${String(message || '')}"`;
+
+        const history = Array.isArray(recentChat)
+            ? recentChat.map(m => ({
+                role: m.sender === 'user' ? 'user' : 'assistant',
+                content: String(m.message || '')
+            })).slice(-8)
+            : [];
+
+        if (!openai) {
+            return res.json({ success: true, response: '- Validation: You’re doing the right thing by getting clarity.\n- Plan: set aside $200/mo for emergency fund; cap variable spend at $400.\n- Next: list fixed bills; track variable spend for 7 days.\n- Questions: income after tax? total debt + APRs?', });
+        }
+        const completion = await openai.chat.completions.create({
+            model: OPENAI_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                ...history,
+                { role: 'user', content: String(message || '') }
+            ],
+            temperature: 0.35,
+            max_tokens: 260,
+            presence_penalty: 0.2,
+            frequency_penalty: 0.2
+        });
+
+        const response = completion.choices?.[0]?.message?.content || '';
+
+        return res.json({ success: true, response });
+    } catch (error) {
+        console.error('Finance advisor error:', error);
+        return res.status(500).json({ success: false, error: 'Failed to generate advisory response' });
+    }
 });
 
 app.listen(port, () => {

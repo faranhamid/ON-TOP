@@ -346,6 +346,7 @@
             border-radius: 18px;
             font-size: 15px;
             line-height: 1.4;
+            white-space: pre-wrap;
         }
 
         .message.user .message-bubble {
@@ -1297,20 +1298,7 @@
                         </div>
                     </div>
 
-                    <!-- Professional Task Summary -->
-                    <div class="card">
-                        <div class="card-title">Task Overview</div>
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value" id="tasks-today">0</div>
-                                <div class="stat-label">Today</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value" id="tasks-week">0</div>
-                                <div class="stat-label">This Week</div>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
 
 
@@ -1483,33 +1471,33 @@
             <div class="section" id="finances-section">
                 <div class="section-content">
 
-                    <!-- Financial Overview Dashboard -->
+                    <!-- Personal Finance Advisor -->
                     <div class="card">
-                        <div class="card-title">Financial Overview</div>
-                        <div class="financial-summary">
-                            <div class="financial-metric">
-                                <div class="metric-icon">▲</div>
-                                <div class="metric-content">
-                                    <div class="metric-value" id="total-income">$0</div>
-                                    <div class="metric-label">Monthly Income</div>
+                        <div class="card-title">Personal Finance Advisor</div>
+                        <div class="chat-container">
+                            <div class="chat-header">
+                                <div class="chat-user-info">
+                                    <div class="chat-avatar">PF</div>
+                                    <div class="chat-user-details">
+                                        <div class="chat-title">Personal Finance Advisor</div>
+                                        <div class="chat-subtitle">Budget, Debt Strategy, Saving & Investing</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="financial-metric">
-                                <div class="metric-icon">▼</div>
-                                <div class="metric-content">
-                                    <div class="metric-value" id="total-expenses">$0</div>
-                                    <div class="metric-label">Monthly Expenses</div>
+                            <div class="chat-messages" id="finance-chat-messages">
+                                <div class="message emma">
+                                    <div class="message-bubble">
+                                        I’m your Personal Finance Advisor. Ask me about saving more, debt payoff, budgeting, or first steps to invest.
+                                    </div>
                                 </div>
                             </div>
-                            <div class="financial-metric highlight">
-                                <div class="metric-icon">◆</div>
-                                <div class="metric-content">
-                                    <div class="metric-value" id="net-worth">$0</div>
-                                    <div class="metric-label">Net Cash Flow</div>
+                            <div class="chat-input-container">
+                                <div class="input-wrapper">
+                                    <input type="text" class="chat-input" id="finance-chat-input" placeholder="Ask about saving, debt, budget, or investing…" onkeypress="handleFinanceChatKeyPress(event)">
+                                    <button class="send-btn" onclick="sendFinanceChatMessage()" title="Send">→</button>
                                 </div>
                             </div>
                         </div>
-                        <button class="btn btn-secondary" onclick="updateIncome()" style="width: 100%; margin-top: 16px;">Update Income</button>
                     </div>
 
                     <!-- Monthly Bills Tracker -->
