@@ -1,4 +1,5 @@
 // ON TOP - Production Backend Service with User Management
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { OpenAI } = require('openai');
@@ -14,7 +15,6 @@ const database = databaseProvider === 'sqlite'
     ? require('./database')
     : require('./database-cloud');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3002;
@@ -22,9 +22,14 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 
 // Initialize OpenAI (optional)
 let openai = null;
+let financeOpenai = null;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_FINANCE_API_KEY = process.env.OPENAI_FINANCE_API_KEY;
 if (OPENAI_API_KEY) {
     openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+}
+if (OPENAI_FINANCE_API_KEY) {
+    financeOpenai = new OpenAI({ apiKey: OPENAI_FINANCE_API_KEY });
 }
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
@@ -482,6 +487,95 @@ app.post('/api/cancel-subscription', authenticateToken, async (req, res) => {
 });
 
 // ================================
+// iOS APP STORE IAP VERIFICATION
+// ================================
+
+// Verify Apple purchase receipts and upgrade user to Premium
+app.post('/api/ios/verify-receipt', authenticateToken, async (req, res) => {
+    try {
+        const { receipt, plan } = req.body || {};
+        if (!receipt || !plan) {
+            return res.status(400).json({ success: false, error: 'Missing receipt or plan' });
+        }
+
+        const verification = await verifyAppleReceipt(receipt);
+
+        // Apple response status: 0 = valid
+        if (!verification || typeof verification.status !== 'number') {
+            return res.status(502).json({ success: false, error: 'Invalid response from Apple' });
+        }
+
+        // If using sandbox in production, Apple returns 21007; retry against sandbox
+        if (verification.status === 21007) {
+            const retry = await verifyAppleReceipt(receipt, true);
+            if (retry && retry.status === 0) {
+                await applyPremiumForPlan(req.user.userId, plan, retry);
+                return res.json({ success: true });
+            }
+            return res.status(400).json({ success: false, error: 'Sandbox receipt invalid' });
+        }
+
+        if (verification.status === 0) {
+            await applyPremiumForPlan(req.user.userId, plan, verification);
+            return res.json({ success: true });
+        }
+
+        return res.status(400).json({ success: false, error: `Apple verification failed: ${verification.status}` });
+    } catch (error) {
+        console.error('Apple verification error:', error);
+        return res.status(500).json({ success: false, error: 'Verification failed' });
+    }
+});
+
+async function applyPremiumForPlan(userId, plan, appleVerification) {
+    const subscriptionExpires = calculateExpiryDate(plan);
+    await database.updateUserPremiumStatus(userId, {
+        isPremium: true,
+        subscriptionExpires,
+        plan,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null
+    });
+}
+
+function calculateExpiryDate(plan) {
+    if (plan === 'lifetime') return null;
+    const now = new Date();
+    if (plan === 'monthly') {
+        return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+    if (plan === 'annual') {
+        return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    }
+    return null;
+}
+
+async function verifyAppleReceipt(receiptData, forceSandbox = false) {
+    const APPLE_SHARED_SECRET = process.env.APPLE_SHARED_SECRET || process.env.IOS_IAP_SHARED_SECRET || '';
+    const envPref = (process.env.APPLE_VERIFY_ENV || '').toLowerCase();
+    const isProductionEnv = envPref === 'production' || envPref === 'prod' || (!envPref && process.env.NODE_ENV === 'production');
+    const useSandbox = forceSandbox || !isProductionEnv;
+
+    const verifyURL = useSandbox
+        ? 'https://sandbox.itunes.apple.com/verifyReceipt'
+        : 'https://buy.itunes.apple.com/verifyReceipt';
+
+    const body = {
+        'receipt-data': receiptData,
+        'password': APPLE_SHARED_SECRET,
+        'exclude-old-transactions': true
+    };
+
+    const response = await fetch(verifyURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+
+    return await response.json();
+}
+
+// ================================
 // EMMA AI THERAPY CHAT ENDPOINT
 // ================================
 
@@ -645,10 +739,10 @@ CURRENT MESSAGE: "${String(message || '')}"`;
             })).slice(-8)
             : [];
 
-        if (!openai) {
-            return res.json({ success: true, response: '- Validation: You’re doing the right thing by getting clarity.\n- Plan: set aside $200/mo for emergency fund; cap variable spend at $400.\n- Next: list fixed bills; track variable spend for 7 days.\n- Questions: income after tax? total debt + APRs?', });
+        if (!financeOpenai) {
+            return res.json({ success: true, response: '- Validation: You are doing the right thing by getting clarity.\n- Plan: set aside $200/mo for emergency fund; cap variable spend at $400.\n- Next: list fixed bills; track variable spend for 7 days.\n- Questions: income after tax? total debt + APRs?' });
         }
-        const completion = await openai.chat.completions.create({
+        const completion = await financeOpenai.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },

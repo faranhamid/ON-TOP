@@ -3,7 +3,7 @@ class ONTOPAuthManager {
     constructor() {
         this.token = localStorage.getItem('ontop_auth_token');
         this.user = JSON.parse(localStorage.getItem('ontop_user') || 'null');
-        this.baseURL = 'http://localhost:3002';
+        this.baseURL = this.getAPIBaseURL();
         this.syncQueue = [];
         this.isOnline = navigator.onLine;
         
@@ -445,6 +445,25 @@ class ONTOPAuthManager {
         } catch (error) {
             console.error('Account deletion failed:', error);
             throw error;
+        }
+    }
+
+    // ================================
+    // PRODUCTION URL CONFIGURATION
+    // ================================
+
+    getAPIBaseURL() {
+        // Check if we're in a production environment
+        const isProduction = window.location.hostname !== 'localhost' && 
+                           window.location.hostname !== '127.0.0.1' &&
+                           !window.location.hostname.includes('localhost');
+        
+        if (isProduction) {
+            // Production API URL - replace with your actual server URL
+            return 'https://your-app.vercel.app'; // Replace with your deployed server URL
+        } else {
+            // Development API URL
+            return 'http://localhost:3002';
         }
     }
 }

@@ -793,12 +793,12 @@
                     <div class="progress-dot"></div>
                     <div class="progress-dot"></div>
                 </div>
-                <button class="btn btn-primary" onclick="proceedToPayment()" id="continue-btn">Continue</button>
+                <button class="btn btn-primary" onclick="skipToApp()" id="continue-btn">Get Started Free</button>
                 <div class="loading" id="payment-loading">
                     <div class="loading-spinner"></div>
                     <span>Processing...</span>
                 </div>
-                <button class="btn btn-ghost" onclick="skipToApp()">Start Free Trial</button>
+                <button class="btn btn-ghost" onclick="skipToApp()">Continue as Guest</button>
             </div>
             
             <div class="screen-footer">
@@ -1081,27 +1081,70 @@
 
         async function initiateApplePayment(plan) {
             try {
-                // This will be implemented when you add the Capacitor IAP plugin
-                console.log('🍎 Starting Apple In-App Purchase for:', plan);
-                
-                // For now, show a message and proceed to profile setup
-                alert('Apple In-App Purchase will be processed. Proceeding to setup...');
-                
-                // In real implementation, this would handle the Apple IAP flow
-                // const { InAppPurchases } = await import('@capacitor-community/in-app-purchases');
-                // const result = await InAppPurchases.purchaseProduct(productId);
-                
-                nextScreen(); // Go to profile setup
-                
-            } catch (error) {
-                console.error('Apple payment error:', error);
-                alert('Payment failed. Please try again.');
-                
-                // Reset UI
+                const plugins = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+                const IAP = plugins && (plugins.InAppPurchases || plugins.InAppPurchase || plugins.Purchases);
+                if (!IAP) throw new Error('In-App Purchases plugin not available');
+
+                const productIds = {
+                    'monthly': 'com.ontop.premium.monthly',
+                    'annual': 'com.ontop.premium.annual',
+                    'lifetime': 'com.ontop.premium.lifetime'
+                };
+                const productId = productIds[plan];
+                if (!productId) throw new Error('Unknown plan');
+
+                // Fetch product details (API shape differs across versions)
+                try {
+                    await (IAP.getProducts ? IAP.getProducts({ skus: [productId] }) : IAP.products ? IAP.products({ skus: [productId] }) : Promise.resolve());
+                } catch (e1) {
+                    try { await IAP.getProducts({ productIds: [productId] }); } catch(e2) { /* ignore */ }
+                }
+
+                // Purchase (support different param names)
+                let purchaseRes = null;
+                if (IAP.purchase) {
+                    try { purchaseRes = await IAP.purchase({ sku: productId }); }
+                    catch { purchaseRes = await IAP.purchase({ productId }); }
+                } else if (IAP.purchaseProduct) {
+                    purchaseRes = await IAP.purchaseProduct(productId);
+                } else {
+                    throw new Error('Purchase method not found');
+                }
+
+                const receipt = (purchaseRes && (purchaseRes.transactionReceipt || purchaseRes.receipt || (purchaseRes.transaction && purchaseRes.transaction.receipt))) || null;
+                if (!receipt) throw new Error('No receipt returned from purchase');
+
+                const authToken = localStorage.getItem('ontop_auth_token');
+                if (!authToken) throw new Error('Not authenticated');
+
+                const verifyRes = await fetch(`${getAPIBaseURL()}/api/ios/verify-receipt`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ receipt, plan })
+                });
+                const verifyJson = await verifyRes.json();
+                if (!verifyRes.ok || !verifyJson.success) {
+                    throw new Error(verifyJson.error || 'Receipt verification failed');
+                }
+
+                // Success: proceed
                 const loadingEl = document.getElementById('payment-loading');
                 const continueBtn = document.getElementById('continue-btn');
                 loadingEl.classList.remove('active');
                 continueBtn.style.display = 'block';
+                nextScreen();
+            } catch (error) {
+                console.error('Apple payment error:', error);
+                alert('Payment failed. Please try again.');
+
+                const loadingEl = document.getElementById('payment-loading');
+                const continueBtn = document.getElementById('continue-btn');
+                loadingEl.classList.remove('active');
+                continueBtn.style.display = 'block';
+                continueBtn.textContent = 'Try Again';
             }
         }
 
@@ -1322,10 +1365,18 @@
         }
 
         function getAPIBaseURL() {
-            // Use the same logic as the main app
-            const isLocalhost = typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-            if (isLocalhost) return 'http://localhost:3002';
-            return 'https://ontop-api.yourdomain.com'; // Replace with your production API
+            // Check if we're in a production environment
+            const isProduction = window.location.hostname !== 'localhost' && 
+                               window.location.hostname !== '127.0.0.1' &&
+                               !window.location.hostname.includes('localhost');
+            
+            if (isProduction) {
+                // Production API URL - automatically use the same domain
+                return window.location.origin;
+            } else {
+                // Development API URL
+                return 'http://localhost:3002';
+            }
         }
 
         function getStripePublishableKey() {
