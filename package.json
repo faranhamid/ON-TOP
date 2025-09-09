@@ -26,7 +26,9 @@
     "multer": "^1.4.5-lts.1",
     "openai": "^4.20.1",
     "pg": "^8.11.3",
+    "serverless-http": "^4.0.0",
     "sqlite3": "^5.1.6",
+    "serverless-http": "^3.2.0",
     "stripe": "^14.25.0"
   },
   "devDependencies": {

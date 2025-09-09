@@ -52,7 +52,10 @@ const devAllowedOrigins = [
     'ionic://localhost'
 ];
 
-const prodAllowedOrigins = ['https://your-domain.com'];
+const prodAllowedOrigins = [
+    'https://your-domain.com',
+    'https://on-top.vercel.app'
+];
 
 const corsWhitelist = process.env.NODE_ENV === 'production' ? prodAllowedOrigins : devAllowedOrigins;
 
@@ -66,18 +69,18 @@ app.use(cors({
     credentials: true
 }));
 
-// Rate limiting
+// Rate limiting (overridable via env for testing)
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || (15 * 60 * 1000)),
+    max: Number(process.env.RATE_LIMIT_MAX || 100),
     message: 'Too many requests from this IP, please try again later.'
 });
 app.use(limiter);
 
-// Stricter rate limiting for auth endpoints
+// Stricter rate limiting for auth endpoints (overridable via env for testing)
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10, // limit each IP to 10 auth requests per 15 minutes
+    windowMs: Number(process.env.RATE_LIMIT_AUTH_WINDOW_MS || (15 * 60 * 1000)),
+    max: Number(process.env.RATE_LIMIT_AUTH_MAX || 10),
     message: 'Too many authentication attempts, please try again later.'
 });
 
@@ -764,7 +767,13 @@ CURRENT MESSAGE: "${String(message || '')}"`;
     }
 });
 
-app.listen(port, () => {
-    console.log(`🚀 ON TOP Backend running on http://localhost:${port}`);
-    console.log(`📱 Emma AI Life Coach ready for conversations`);
-});
+// Only start a listener when running as a standalone server (not on Vercel)
+if (!process.env.VERCEL) {
+    app.listen(port, () => {
+        console.log(`🚀 ON TOP Backend running on http://localhost:${port}`);
+        console.log(`📱 Emma AI Life Coach ready for conversations`);
+    });
+}
+
+// Export the Express app for Vercel Serverless usage
+module.exports = app;
