@@ -459,8 +459,8 @@ class ONTOPAuthManager {
                            !window.location.hostname.includes('localhost');
         
         if (isProduction) {
-            // Production API URL - replace with your actual server URL
-            return 'https://your-app.vercel.app'; // Replace with your deployed server URL
+            // Production API URL - use same origin so frontend and API share the domain
+            return window.location.origin;
         } else {
             // Development API URL
             return 'http://localhost:3002';
