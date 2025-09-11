@@ -13,23 +13,31 @@ class ONTOPCloudDatabase {
             database: process.env.DB_NAME,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            port: 5432,
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+            port: Number(process.env.DB_PORT || 5432),
+            ssl: process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
             max: 20,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 2000,
         });
 
         // Google Cloud Storage
-        this.storage = new Storage({
-            projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-            keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
-        });
-        
-        this.uploadsBucket = this.storage.bucket(process.env.STORAGE_BUCKET_UPLOADS);
-        this.backupsBucket = this.storage.bucket(process.env.STORAGE_BUCKET_BACKUPS);
+        try {
+            this.storage = new Storage({
+                projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+                keyFilename: process.env.GOOGLE_CLOUD_KEY_FILE,
+            });
+            this.uploadsBucket = this.storage.bucket(process.env.STORAGE_BUCKET_UPLOADS || '');
+            this.backupsBucket = this.storage.bucket(process.env.STORAGE_BUCKET_BACKUPS || '');
+        } catch (_err) {
+            this.storage = null;
+            this.uploadsBucket = null;
+            this.backupsBucket = null;
+        }
 
-        this.initializeTables();
+        // Avoid running migrations on every serverless cold start. Gate with env flag.
+        if (process.env.MIGRATE_ON_START === 'true') {
+            this.initializeTables().catch((e) => console.error('DB init error:', e));
+        }
     }
 
     async initializeTables() {
