@@ -459,8 +459,8 @@ class ONTOPAuthManager {
                            !window.location.hostname.includes('localhost');
         
         if (isProduction) {
-            // Production API URL - use same origin so frontend and API share the domain
-            return window.location.origin;
+            // Production API URL - Railway backend
+            return 'https://on-top-api-production.up.railway.app';
         } else {
             // Development API URL
             return 'http://localhost:3002';

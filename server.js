@@ -716,7 +716,8 @@ app.post('/api/finance-advisor', async (req, res) => {
     try {
         const { message, userFinanceContext, recentChat } = req.body || {};
 
-        const systemPrompt = `You are a warm, practical Personal Finance Advisor for everyday people.
+        const FINANCE_PROMPT_BASE = process.env.OPENAI_FINANCE_SYSTEM_PROMPT ||
+`You are a warm, practical Personal Finance Advisor for everyday people.
 Speak like a trusted friend who knows personal finance cold. Be concise and relatable.
 
 MANDATORY STYLE
@@ -730,7 +731,9 @@ REPLY SHAPE (strict)
 - Opener (1 short line of validation)
 - Plan (2 bullets with simple numbers/assumptions)
 - Next steps (2 bullets, do‑today actions)
-- Questions (exactly 2, on their situation)
+- Questions (exactly 2, on their situation)`;
+
+        const systemPrompt = `${FINANCE_PROMPT_BASE}
 
 CONTEXT (JSON): ${JSON.stringify(userFinanceContext || {})}
 CURRENT MESSAGE: "${String(message || '')}"`;

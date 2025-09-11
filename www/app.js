@@ -1000,6 +1000,18 @@ function saveFitnessData() {
 function initializeFinances() {
     updateTotalBills();
     loadFinancialGoals();
+    // Initialize and render finance chat history for continuity
+    try {
+        if (!window.AppState) window.AppState = {};
+        if (!AppState.financeChat) AppState.financeChat = { messages: [] };
+        const saved = JSON.parse(localStorage.getItem('ontop_finance_chat') || '[]');
+        if (Array.isArray(saved)) {
+            AppState.financeChat.messages = saved.slice(-50); // cap history
+        }
+        renderFinanceChatHistory();
+    } catch (e) {
+        console.warn('Finance chat history init failed', e);
+    }
 }
 
 function addBill() {
@@ -1450,6 +1462,16 @@ function addFinanceChatMessage(message, sender) {
     messageDiv.innerHTML = `<div class="message-bubble">${message}</div>`;
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // Persist to dedicated finance chat history for stronger continuity
+    try {
+        if (!window.AppState) window.AppState = {};
+        if (!AppState.financeChat) AppState.financeChat = { messages: [] };
+        AppState.financeChat.messages.push({ message, sender, timestamp: Date.now() });
+        localStorage.setItem('ontop_finance_chat', JSON.stringify(AppState.financeChat.messages.slice(-50)));
+    } catch (e) {
+        console.warn('Persist finance chat failed', e);
+    }
 }
 
 function showFinanceTyping() {
@@ -1494,7 +1516,8 @@ async function sendFinanceChatMessage() {
             body: JSON.stringify({
                 message,
                 userFinanceContext,
-                recentChat: (Array.isArray(AppState.chat?.messages) ? AppState.chat.messages.slice(-8) : [])
+                // Use dedicated finance chat history instead of general Emma chat
+                recentChat: (Array.isArray(AppState.financeChat?.messages) ? AppState.financeChat.messages.slice(-8) : [])
             })
         });
         const data = await response.json();
@@ -1509,6 +1532,20 @@ async function sendFinanceChatMessage() {
         hideFinanceTyping();
         addFinanceChatMessage('Temporary issue reaching the advisor. Please retry in a moment.', 'emma');
     }
+}
+
+function renderFinanceChatHistory() {
+    const container = document.getElementById('finance-chat-messages');
+    if (!container) return;
+    container.innerHTML = '';
+    const history = (AppState.financeChat && Array.isArray(AppState.financeChat.messages)) ? AppState.financeChat.messages : [];
+    history.forEach(m => {
+        const div = document.createElement('div');
+        div.className = `message ${m.sender}`;
+        div.innerHTML = `<div class="message-bubble">${m.message}</div>`;
+        container.appendChild(div);
+    });
+    container.scrollTop = container.scrollHeight;
 }
 
 async function generateEmmaResponse_OLD_BACKUP(userMessage) {
