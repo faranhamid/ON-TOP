@@ -14,23 +14,15 @@ const databaseProvider = process.env.DATABASE_PROVIDER || (process.env.DB_HOST ?
 const database = databaseProvider === 'sqlite'
     ? require('./database')
     : require('./database-cloud');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// Stripe removed (free app)
 
 const app = express();
 const port = process.env.PORT || 3002;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-// Initialize OpenAI (optional)
-let openai = null;
-let financeOpenai = null;
+// OpenAI configuration (lazy init in handlers to reduce cold start)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_FINANCE_API_KEY = process.env.OPENAI_FINANCE_API_KEY;
-if (OPENAI_API_KEY) {
-    openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-}
-if (OPENAI_FINANCE_API_KEY) {
-    financeOpenai = new OpenAI({ apiKey: OPENAI_FINANCE_API_KEY });
-}
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 // Security Middleware - Disable CSP to allow inline scripts
@@ -277,217 +269,7 @@ app.delete('/api/user/account', authenticateToken, async (req, res) => {
     }
 });
 
-// ================================
-// PAYMENT & SUBSCRIPTION ENDPOINTS
-// ================================
-
-// Create Stripe Checkout Session
-app.post('/api/create-checkout-session', authenticateToken, async (req, res) => {
-    try {
-        const { plan } = req.body;
-        
-        const planConfig = {
-            monthly: {
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: 'ON TOP Premium - Monthly',
-                        description: 'Unlimited access to all premium features',
-                    },
-                    unit_amount: 999, // $9.99
-                    recurring: {
-                        interval: 'month',
-                    },
-                },
-                quantity: 1,
-            },
-            annual: {
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: 'ON TOP Premium - Annual',
-                        description: 'Unlimited access to all premium features (Save 17%)',
-                    },
-                    unit_amount: 9999, // $99.99
-                    recurring: {
-                        interval: 'year',
-                    },
-                },
-                quantity: 1,
-            },
-            lifetime: {
-                price_data: {
-                    currency: 'usd',
-                    product_data: {
-                        name: 'ON TOP Premium - Lifetime',
-                        description: 'Lifetime access to all premium features',
-                    },
-                    unit_amount: 15000, // $150.00
-                },
-                quantity: 1,
-            }
-        };
-
-        if (!planConfig[plan]) {
-            return res.status(400).json({ error: 'Invalid plan selected' });
-        }
-
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [planConfig[plan]],
-            mode: plan === 'lifetime' ? 'payment' : 'subscription',
-            success_url: `${req.headers.origin}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.origin}/paywall.html`,
-            customer_email: req.user.email,
-            metadata: {
-                userId: req.user.userId.toString(),
-                plan: plan
-            },
-        });
-
-        res.json({ sessionId: session.id });
-    } catch (error) {
-        console.error('Stripe session creation error:', error);
-        res.status(500).json({ error: 'Failed to create payment session' });
-    }
-});
-
-// Stripe Webhook Handler
-app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-        console.error('Webhook signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle the event
-    switch (event.type) {
-        case 'checkout.session.completed':
-            const session = event.data.object;
-            await handleSuccessfulPayment(session);
-            break;
-        case 'customer.subscription.deleted':
-            const subscription = event.data.object;
-            await handleSubscriptionCancellation(subscription);
-            break;
-        case 'invoice.payment_failed':
-            const invoice = event.data.object;
-            await handleFailedPayment(invoice);
-            break;
-        default:
-            console.log(`Unhandled event type ${event.type}`);
-    }
-
-    res.json({received: true});
-});
-
-async function handleSuccessfulPayment(session) {
-    try {
-        const userId = parseInt(session.metadata.userId);
-        const plan = session.metadata.plan;
-        
-        let subscriptionExpires = null;
-        if (plan === 'monthly') {
-            subscriptionExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-        } else if (plan === 'annual') {
-            subscriptionExpires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 365 days
-        }
-        // Lifetime has no expiration date (null)
-
-        // Update user's premium status
-        await database.updateUserPremiumStatus(userId, {
-            isPremium: true,
-            subscriptionExpires: subscriptionExpires,
-            plan: plan,
-            stripeCustomerId: session.customer,
-            stripeSubscriptionId: session.subscription
-        });
-
-        console.log(`✅ User ${userId} upgraded to ${plan} plan`);
-    } catch (error) {
-        console.error('Error handling successful payment:', error);
-    }
-}
-
-async function handleSubscriptionCancellation(subscription) {
-    try {
-        // Find user by Stripe subscription ID
-        const user = await database.getUserByStripeSubscription(subscription.id);
-        if (user) {
-            await database.updateUserPremiumStatus(user.id, {
-                isPremium: false,
-                subscriptionExpires: null,
-                plan: null,
-                stripeSubscriptionId: null
-            });
-            console.log(`❌ User ${user.id} subscription cancelled`);
-        }
-    } catch (error) {
-        console.error('Error handling subscription cancellation:', error);
-    }
-}
-
-async function handleFailedPayment(invoice) {
-    try {
-        // Handle failed payment logic here
-        console.log('Payment failed for invoice:', invoice.id);
-        // You might want to send an email notification or update user status
-    } catch (error) {
-        console.error('Error handling failed payment:', error);
-    }
-}
-
-// Check Premium Status
-app.get('/api/user/premium-status', authenticateToken, async (req, res) => {
-    try {
-        const user = await database.getUserById(req.user.userId);
-        
-        const now = new Date();
-        const isExpired = user.subscription_expires && new Date(user.subscription_expires) < now;
-        
-        res.json({
-            success: true,
-            isPremium: user.is_premium && !isExpired,
-            plan: user.plan,
-            subscriptionExpires: user.subscription_expires,
-            daysRemaining: user.subscription_expires ? 
-                Math.max(0, Math.ceil((new Date(user.subscription_expires) - now) / (1000 * 60 * 60 * 24))) : 
-                null
-        });
-    } catch (error) {
-        console.error('Premium status check error:', error);
-        res.status(500).json({ error: 'Failed to check premium status' });
-    }
-});
-
-// Cancel Subscription
-app.post('/api/cancel-subscription', authenticateToken, async (req, res) => {
-    try {
-        const user = await database.getUserById(req.user.userId);
-        
-        if (user.stripe_subscription_id) {
-            await stripe.subscriptions.del(user.stripe_subscription_id);
-            
-            await database.updateUserPremiumStatus(req.user.userId, {
-                isPremium: false,
-                subscriptionExpires: null,
-                plan: null,
-                stripeSubscriptionId: null
-            });
-            
-            res.json({ success: true, message: 'Subscription cancelled successfully' });
-        } else {
-            res.status(400).json({ error: 'No active subscription found' });
-        }
-    } catch (error) {
-        console.error('Subscription cancellation error:', error);
-        res.status(500).json({ error: 'Failed to cancel subscription' });
-    }
-});
+// Payments removed (app is free now)
 
 // ================================
 // iOS APP STORE IAP VERIFICATION
@@ -618,10 +400,12 @@ CURRENT MESSAGE: "${message}"`;
             })).slice(-8)
             : [];
 
-        if (!openai) {
+        if (!OPENAI_API_KEY) {
             return res.json({ success: false, response: "I'm here and listening. Tell me what's on your mind.", error: 'AI not configured' });
         }
-        const completion = await openai.chat.completions.create({
+
+        const openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+        const completion = await openaiClient.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
@@ -745,10 +529,11 @@ CURRENT MESSAGE: "${String(message || '')}"`;
             })).slice(-8)
             : [];
 
-        if (!financeOpenai) {
+        if (!OPENAI_FINANCE_API_KEY) {
             return res.json({ success: true, response: '- Validation: You are doing the right thing by getting clarity.\n- Plan: set aside $200/mo for emergency fund; cap variable spend at $400.\n- Next: list fixed bills; track variable spend for 7 days.\n- Questions: income after tax? total debt + APRs?' });
         }
-        const completion = await financeOpenai.chat.completions.create({
+        const financeClient = new OpenAI({ apiKey: OPENAI_FINANCE_API_KEY });
+        const completion = await financeClient.chat.completions.create({
             model: OPENAI_MODEL,
             messages: [
                 { role: 'system', content: systemPrompt },
