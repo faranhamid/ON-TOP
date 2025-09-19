@@ -1,5 +1,24 @@
 // ON TOP - Production Backend Service with User Management
 require('dotenv').config();
+// Auto-detect and parse a Postgres connection string if provided (e.g., DATABASE_URL or Supabase URL)
+try {
+    const connUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || process.env.SUPABASE_POSTGRES_URL || '';
+    if (connUrl && (!process.env.DB_HOST || !process.env.DATABASE_PROVIDER)) {
+        const { URL } = require('url');
+        const u = new URL(connUrl);
+        if (u.protocol.startsWith('postgres')) {
+            process.env.DB_HOST = process.env.DB_HOST || u.hostname;
+            process.env.DB_PORT = process.env.DB_PORT || (u.port || '5432');
+            process.env.DB_NAME = process.env.DB_NAME || (u.pathname || '').replace('/', '');
+            process.env.DB_USER = process.env.DB_USER || decodeURIComponent(u.username || '');
+            process.env.DB_PASSWORD = process.env.DB_PASSWORD || decodeURIComponent(u.password || '');
+            process.env.DB_SSL = process.env.DB_SSL || 'true';
+            process.env.DATABASE_PROVIDER = process.env.DATABASE_PROVIDER || 'pg';
+        }
+    }
+} catch (e) {
+    // Ignore URL parse issues; fall back to defaults
+}
 const express = require('express');
 const cors = require('cors');
 const { OpenAI } = require('openai');
@@ -9,7 +28,7 @@ const storageAdapter = require('./storage');
 const helmet = require('helmet');
 const { body, validationResult } = require('express-validator');
 const jwt = require('jsonwebtoken');
-// Select database provider (default: sqlite). Set DATABASE_PROVIDER=pg (or define DB_HOST) to use Postgres/Supabase
+// Select database provider (default: sqlite). Auto-switches to pg if DB_HOST present or DATABASE_PROVIDER=pg
 const databaseProvider = process.env.DATABASE_PROVIDER || (process.env.DB_HOST ? 'pg' : 'sqlite');
 const database = databaseProvider === 'sqlite'
     ? require('./database')
