@@ -381,7 +381,7 @@
                 <button class="btn-cta" onclick="startOnboarding()">Get Started</button>
                 
                 <div class="secondary-actions">
-                    <a href="#" class="btn-secondary" onclick="showDemo()">Watch Demo</a>
+                    <a href="#" class="btn-secondary" onclick="showDemo(); return false;">Watch Demo</a>
                     <a href="#" class="btn-secondary" onclick="learnMore()">Learn More</a>
                 </div>
             </div>
@@ -428,10 +428,19 @@
             }, 800);
         }
 
-        // Show demo (placeholder)
+        // Show demo - redirect to actual app
         function showDemo() {
+            console.log('Watch Demo clicked!');
             trackEvent('landing_demo_clicked');
-            alert('Demo coming soon! Click "Get Started" to experience ON TOP.');
+            
+            // Add fade out effect
+            document.body.style.transition = 'opacity 0.5s ease-out';
+            document.body.style.opacity = '0';
+            
+            setTimeout(() => {
+                console.log('Redirecting to app.html');
+                window.location.href = 'app.html';
+            }, 500);
         }
 
         // Learn more (placeholder)

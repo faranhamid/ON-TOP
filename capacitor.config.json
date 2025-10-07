@@ -4,6 +4,8 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://on-mbxdl25u9-faran-hamids-projects.vercel.app",
+    "cleartext": false,
     "androidScheme": "https"
   }
 }

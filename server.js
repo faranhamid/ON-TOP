@@ -65,7 +65,10 @@ const devAllowedOrigins = [
 
 const prodAllowedOrigins = [
     'https://your-domain.com',
-    'https://on-top.vercel.app'
+    'https://ontop-app.vercel.app',
+    'https://matrix-app-*.vercel.app', // Auto-generated preview URLs
+    'capacitor://localhost',
+    'ionic://localhost'
 ];
 
 const corsWhitelist = process.env.NODE_ENV === 'production' ? prodAllowedOrigins : devAllowedOrigins;
@@ -74,7 +77,17 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow non-browser requests (e.g., curl, mobile webviews that omit origin)
         if (!origin) return callback(null, true);
+        
+        // Check exact matches first
         if (corsWhitelist.includes(origin)) return callback(null, true);
+        
+        // Check wildcard patterns for Vercel preview URLs
+        if (process.env.NODE_ENV === 'production') {
+            if (origin && origin.match(/^https:\/\/matrix-app-.*\.vercel\.app$/)) {
+                return callback(null, true);
+            }
+        }
+        
         return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
     credentials: true
